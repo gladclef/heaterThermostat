@@ -96,7 +96,7 @@ uint16_t getChar(char* sVal, float fVal, int index) {
 }
 
 unsigned long lastUpload = 0;
-void saveData(float f, unsigned long currTime)
+void saveTemperature(float f, unsigned long currTime)
 {
 	if (currTime - lastUpload < 5000) {
 		return;
@@ -146,6 +146,13 @@ unsigned long lastFanCheckTime = 0;
 float prevVals[PREV_VAL_MAX];
 unsigned long lastFanOnTime = 0, lastFanOffTime = 0;
 int isFanOn = FALSE; // starts off
+
+// Does the following:
+// -keeps track of the currentDirection (of temperature)
+// -tracks the fan on/off status
+// -turns the fan on or off
+// 
+// Only runs once every 5 seconds (uses the given currTime to track it's own time).
 void turnOnHeaterFan(float f, unsigned long currTime)
 {
 	// is it time to check for an update?
@@ -159,8 +166,8 @@ void turnOnHeaterFan(float f, unsigned long currTime)
 	if (prevValCnt < PREV_VAL_MAX)
 	{
 		char str[100];
-		sprintf(str, "loading previous value %.2f\n\r", f);
-		Serial.print(str);
+		sprintf(str, "loading previous value %.2f", f);
+		Serial.println(str);
 		prevVals[prevValCnt] = f;
 		prevValCnt++;
 		return;
@@ -183,8 +190,7 @@ void turnOnHeaterFan(float f, unsigned long currTime)
 		sprintf(strPtr, "(%.2f/%.2f %d) ", last, next, (next > last) ? 1 : ((next < last) ? -1 : 0));
 		strPtr = str + (int)strlen(str);
 	}
-	sprintf(strPtr, "\n\r");
-	Serial.print(str);
+	Serial.println(str);
 
 	// check for change in direction
 	packWriteOnOff = 0;
@@ -216,7 +222,7 @@ void turnOnHeaterFan(float f, unsigned long currTime)
 		isFanOn = TRUE;
 		lastFanOnTime = currTime;
 		digitalWrite(FANPIN, HIGH);
-		Serial.print("fan on\n\r");
+		Serial.println("fan on");
 		packWriteOnOff = 1;
 #ifdef USEIO
 		fanOn->save(1);
@@ -232,7 +238,7 @@ void turnOnHeaterFan(float f, unsigned long currTime)
 		isFanOn = FALSE;
 		lastFanOnTime = currTime;
 		digitalWrite(FANPIN, LOW);
-		Serial.print("fan off\n\r");
+		Serial.println("fan off");
 		packWriteOnOff = -1;
 #ifdef USEIO
 		fanOn->save(0);
@@ -263,8 +269,8 @@ void loop()
 	// Read and print out the temperature, then convert to *F
 	float c = tempsensor.readTempC();
 	float f = c * 9.0 / 5.0 + 32;
-	// Serial.print("Temp: "); Serial.print(c); Serial.print("*C\t"); 
-	// Serial.print(f); Serial.println("*F");
+	Serial.print("Temp: "); Serial.print(c); Serial.print("*C\t"); 
+	Serial.print(f); Serial.println("*F");
 
 	// write data to the display
 	if (packWriteOnOff == 1)
@@ -300,5 +306,5 @@ void loop()
 	turnOnHeaterFan(f, currTime);
 
 	// save the temperature to IO
-	saveData(f, currTime);
+	saveTemperature(f, currTime);
 }
